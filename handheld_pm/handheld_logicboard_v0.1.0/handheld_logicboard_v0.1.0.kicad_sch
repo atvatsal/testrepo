@@ -1,0 +1,168 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "3f53de8d-d176-487c-9ae5-b30945d98e86")
+	(paper "A4")
+	(title_block
+		(title "Handheld PM Monitor")
+		(date "2026-05-18")
+		(rev "0.1.0")
+		(company "Oizom Instruments Pvt. Ltd.")
+	)
+	(lib_symbols)
+	(sheet
+		(at 190.5 50.8)
+		(size 50.8 38.1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "05ad86e4-fcbf-4338-9d3e-c36c9dea0399")
+		(property "Sheetname" "Peripherals"
+			(at 190.5 50.0884 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Peripherals.kicad_sch"
+			(at 190.5 89.4846 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "handheld_logicboard_v0.1.0"
+				(path "/3f53de8d-d176-487c-9ae5-b30945d98e86"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 127 50.8)
+		(size 50.8 38.1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "d2c4e01a-c4d2-43c8-8e2e-31c68a79ba31")
+		(property "Sheetname" "Microcontroller"
+			(at 127 50.0884 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "Microcontroller.kicad_sch"
+			(at 127 89.4846 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "handheld_logicboard_v0.1.0"
+				(path "/3f53de8d-d176-487c-9ae5-b30945d98e86"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 63.5 50.8)
+		(size 50.8 38.1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "fa0b07a3-36e1-44cb-a097-4249f6074e2d")
+		(property "Sheetname" "IO"
+			(at 63.5 50.0884 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "IO.kicad_sch"
+			(at 63.5 89.4846 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "handheld_logicboard_v0.1.0"
+				(path "/3f53de8d-d176-487c-9ae5-b30945d98e86"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+	(embedded_files
+		(file
+			(name "oizom_title_block_v0.1.0.kicad_wks")
+			(type worksheet)
+			(data |KLUv/WAZCh0XAMbgZiEAtR5qxcbwSfgG83jPV+sIGGA5k1AplEvT4X/o/39CwQRcAFYAYAChze/d
+				Hep/3Yn6Oxy8J/WMOduGmt9csGBROb3zHxbdjMGCJanfEh5/dJ8AAARE0N9xykkpDbX14+9qQJHy
+				rd/umy+HAAgUEpTSqs7qWeNx3xABEBg/Is1nPfwhBD+CPFZ1mpGq5bPrukkrAiDrDXWr+qhFilL+
+				o/vdW7Oyqk+LNNpexm+vePe+eWvvQZ8+qY+nwc4v+Pj9dt6/DNLbOuWfbxhqr3r1L99Z+aTUf9sf
+				Kcpv93YsCFmpV4HhJPg2yt+GW298X9FSsEkrGiWjlLDlA3XnB3m5JRF1w2gVTJ3TkpZPSil/XJVk
+				slkqGkbDyBbbwzSoc2Kycixx0riModEuFstmGrjivmXsvUn7fr6ekzY4gUKgAAgU6iFxXVWFHTBa
+				D5a8aq1zyupYApNYAnvrachFuWwxgVRERas6Z6WcRIuQshVDvZjyykgySmSyODi4jMJpmsNCaSUp
+				jWQSDbI1cMPDoH3sl7w0CLdx4GMOwz7sH4COoBFJpVQJSQqSFDLMAXBEhOaK2xuQs4EUNfhvv7Az
+				ig6t+z8RtCTkavk9p2X01rVC4H0QP+mcocZh2DnFsGfxyOGRAjQjjysgjrGfB8qGcjHFhUJiJa6Y
+				ntesvRRhEvBba0ZHQss9EJfCwHVOAIS/L2RQGIE+IHAO3J9cIoQoxiO0QdjVKKuS8gJsde2nF5SG
+				kaMNz8lFnqRrAQC1A7nquNIacTxZpDXi6yJ1XczFZWJgw7KEXRlKvwXdG93heChxANuVKyYcGwJV
+				0kGdlLKPYCJ0Monap0FGOEAvE7N/Ag9KyEYAn2T/VILiDycOv05yZ6Z5rI47Fx6rgZRPFFAfkGlj
+				ZCfCi4CoRwiaDro0yF07zDOfT4uu1eyLIsqofy0pwZM4kdsOsX3DFcM+ttzhHXPrS7X0rlHY43vi
+				/696hGx89Co=|
+			)
+			(checksum "78BA7EAD6C7C43D3F29A0F24FF629CF1")
+		)
+	)
+)

@@ -1,0 +1,204 @@
+name: KiBot
+
+# Branch pushes and pull requests only. Tag pushes are handled by
+# kibot-release.yml.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) Detect which KiCad projects changed and which automation files to run.
+  #    A "project" is any directory containing a *.kicad_pro file. A file is
+  #    considered to belong to a project if its closest ancestor directory
+  #    containing a *.kicad_pro is that project. We then enumerate
+  #    automation/automation1*.kibot.yml inside each changed project and emit
+  #    one matrix entry per (project, automation_file) pair.
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detect changed KiCad projects
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.find.outputs.matrix }}
+      count: ${{ steps.find.outputs.count }}
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find changed projects and automations
+        id: find
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Resolve the SHA range to diff
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+          fi
+
+          # New branch / initial commit -> diff against the empty tree so every
+          # tracked file shows up as "changed".
+          EMPTY_TREE=$(git hash-object -t tree /dev/null)
+          if [ -z "${BASE:-}" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            BASE="$EMPTY_TREE"
+          fi
+
+          # Make sure both SHAs are reachable; fall back to empty tree otherwise
+          # (e.g. force-pushed branch where BASE was rewritten).
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null && [ "$BASE" != "$EMPTY_TREE" ]; then
+            echo "::warning::Base SHA $BASE not reachable, falling back to empty tree"
+            BASE="$EMPTY_TREE"
+          fi
+
+          echo "Diff range: $BASE..$HEAD"
+          CHANGED=$(git diff --name-only "$BASE" "$HEAD")
+          echo "Changed files:"
+          echo "$CHANGED" | sed 's/^/  /'
+
+          # For each changed file, walk up directories to find the nearest one
+          # holding a *.kicad_pro -> that's the project root.
+          declare -A PROJECTS
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            dir=$(dirname "$f")
+            while :; do
+              if compgen -G "$dir/*.kicad_pro" > /dev/null; then
+                PROJECTS["$dir"]=1
+                break
+              fi
+              parent=$(dirname "$dir")
+              [ "$parent" = "$dir" ] && break
+              dir="$parent"
+            done
+          done <<< "$CHANGED"
+
+          # Build (project, automation) matrix entries for the automation1*
+          # set (the lightweight N10..N19 jobs run on every push/PR).
+          items=()
+          for proj in "${!PROJECTS[@]}"; do
+            if [ ! -d "$proj/automation" ]; then
+              echo "::warning::$proj has no automation/ directory, skipping"
+              continue
+            fi
+            shopt -s nullglob
+            autos=( "$proj"/automation/automation1*.kibot.yml )
+            shopt -u nullglob
+            if [ ${#autos[@]} -eq 0 ]; then
+              echo "::warning::$proj has no automation1*.kibot.yml files, skipping"
+              continue
+            fi
+            for autom in "${autos[@]}"; do
+              autom_name=$(basename "$autom")
+              items+=("{\"project\":\"$proj\",\"automation\":\"$autom_name\"}")
+              echo "  -> $proj :: $autom_name"
+            done
+          done
+
+          if [ ${#items[@]} -eq 0 ]; then
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "No KiCad projects/automations to run."
+          else
+            joined=$(IFS=,; echo "${items[*]}")
+            echo "matrix={\"include\":[$joined]}" >> "$GITHUB_OUTPUT"
+            echo "count=${#items[@]}" >> "$GITHUB_OUTPUT"
+            echo "Scheduling ${#items[@]} KiBot job(s)."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # 2) For every (project, automation) pair, run KiBot inside the official
+  #    container, then commit & push the generated outputs. Matrix jobs run in
+  #    parallel; pushes are serialized via fetch+rebase+retry to avoid the
+  #    "non-fast-forward" races that happen when sibling jobs finish together.
+  # ---------------------------------------------------------------------------
+  kibot:
+    name: ${{ matrix.project }} / ${{ matrix.automation }}
+    needs: detect
+    if: needs.detect.outputs.count != '0'
+    runs-on: ubuntu-latest
+    container: ghcr.io/inti-cmnb/kicad9_auto_full:latest
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
+    steps:
+      - name: Trust workspace directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref || github.ref_name }}
+          persist-credentials: true
+
+      - name: Configure git author
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run KiBot
+        working-directory: ${{ matrix.project }}
+        run: |
+          set -euo pipefail
+          echo "Running KiBot for ${{ matrix.project }} with ${{ matrix.automation }}"
+          kibot -c "./automation/${{ matrix.automation }}"
+
+      - name: Commit and push outputs
+        if: github.event_name == 'push'
+        env:
+          PROJECT:    ${{ matrix.project }}
+          AUTOMATION: ${{ matrix.automation }}
+          BRANCH:     ${{ github.ref_name }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Only stage files inside this project so parallel siblings working
+          # on other projects don't get swept into our commit.
+          git add -A -- "$PROJECT"
+
+          if git diff --cached --quiet; then
+            echo "No outputs produced by $AUTOMATION for $PROJECT — nothing to commit."
+            exit 0
+          fi
+
+          # [skip ci] keeps GitHub from triggering a fresh workflow run for
+          # this bot commit, which would otherwise re-detect the project
+          # (because the generated files live inside it) and loop forever.
+          SHORT_SHA=${SOURCE_SHA:0:7}
+          git commit \
+            -m "ci(kibot): outputs for $PROJECT" \
+            -m "For git hash: $SOURCE_SHA" \
+            -m "Automation file: $AUTOMATION" \
+            -m "[skip ci]"
+
+          # Push with rebase-on-failure to survive concurrent matrix pushes.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if git push origin "HEAD:$BRANCH"; then
+              echo "Pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt); rebasing on origin/$BRANCH..."
+            git fetch origin "$BRANCH"
+            if ! git rebase "origin/$BRANCH"; then
+              echo "::error::Rebase conflict while integrating concurrent KiBot outputs"
+              git rebase --abort || true
+              exit 1
+            fi
+            sleep $(( (RANDOM % 8) + 2 ))
+          done
+
+          echo "::error::Failed to push after 8 attempts"
+          exit 1

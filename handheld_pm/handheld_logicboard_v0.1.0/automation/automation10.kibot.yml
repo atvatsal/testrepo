@@ -1,0 +1,237 @@
+kibot:
+  version: 1
+
+import:
+  - file: jlcpcb.kibot.yml
+
+preflight:
+  fill_zones: true
+  check_zone_fills: true
+  erc:
+    dont_stop: true
+    dir: reports
+    format: HTML,JSON
+  drc:
+    dont_stop: true
+    dir: reports
+    format: HTML,JSON
+  set_text_variables:
+    - name: 'git_hash'
+      command: 'git log -1 --format="%h" "$KIBOT_PCB_NAME"'
+    - name: 'git_date'
+      command: 'git log -1 --format="%ad" --date=format:"%d-%m-%Y" "$KIBOT_PCB_NAME"'
+
+filters:
+  - name: none_of_jlc_parts
+    comment: 'None of the parts with JLC (LCSC) code'
+    type: generic
+    exclude_any:
+      - column: _field_lcsc_part
+        regex: '.+'  
+  - name: only_digikey_parts
+    comment: 'Only parts with DigiKey part number'
+    type: generic
+    include_only:
+      - column: 'Digikey Part #'
+        regex: '.+'  
+  - name: none_of_digikey_parts
+    comment: 'None of the parts with DigiKey part number'
+    type: generic
+    exclude_any:
+      - column: 'Digikey Part #'
+        regex: '.+'  
+
+outputs:
+  - name: gerber_modern
+    comment: Gerbers in modern format, recommended by the standard
+    type: gerber
+    dir: manufacturing/gerbers_and_drill
+    layers:
+      - F.Cu
+      - B.Cu
+      - In1.Cu
+      - In2.Cu
+      - In3.Cu
+      - In4.Cu
+      - In5.Cu
+      - In6.Cu
+      - F.SilkS
+      - B.SilkS
+      - F.Paste
+      - B.Paste
+      - F.Mask
+      - B.Mask
+      - Edge.Cuts
+  - name: basic_gerb_drill
+    comment: Drill files in GERB_DRILL format
+    type: gerb_drill
+    dir: manufacturing/gerbers_and_drill
+    options:
+      map: gerber
+  - name: minimal_export_3d_step
+    comment: Minimal 3D model in STEP format for mechanical team
+    type: export_3d
+    dir: exports/mechanical
+    options:
+      output: '%f-v%r-minimal.%x'
+      format: step
+  - name: full_export_3d_step
+    comment: Full 3D model in STEP format with all layers
+    type: export_3d
+    dir: exports/mechanical
+    options:
+      output: '%f-v%r-full.%x'
+      format: step
+      cut_vias_in_body: true
+      include_inner_copper: true
+      include_pads: true
+      include_silkscreen: true
+      include_soldermask: true
+      include_tracks: true
+      include_zones: true
+  - name: basic_kicanvas
+    comment: Web page to browse the schematic and/or PCB
+    type: kicanvas
+    dir: exports/kicanvas
+    options:
+      source:
+        - schematic
+        - pcb
+  - name: basic_pdf_sch_print
+    comment: Schematic in PDF format
+    type: pdf_sch_print
+    dir: exports
+  - name: basic_pdf_pcb_print
+    comment: PCB in PDF format
+    type: pcb_print
+    dir: exports
+    options:
+      format: PDF
+      output: '%f-pcb%I%v.%x'
+      force_edge_cuts: true
+      pages:
+      - layers:
+        - layer: Edge.Cuts
+        sheet: '%ld (%ln+Edge.Cuts)'
+        repeat_for_layer: Edge.Cuts
+        repeat_layers: all
+  - name: report_full
+    comment: Full design report
+    type: report
+    dir: reports
+    options:
+      template: full
+      do_convert: true
+  - name: bom_digikey_mylists
+    comment: BOM for DigiKey myLists
+    type: bom
+    dir: manufacturing/bom
+    output_id: '-digikey'
+    options:
+      format: CSV
+      exclude_filter: ['only_digikey_parts', '_mechanical']
+      group_fields: ['value', 'footprint', 'LCSC']
+      merge_blank_fields: false
+      csv:
+        hide_pcb_info: true
+        hide_stats_info: true
+      columns:
+      - field: 'Reference'
+        name: 'Reference Designator'
+      - field: 'Digikey Part #'
+        name: 'DigiKey Part Number'
+      - field: '${QUANTITY}'
+        name: 'Quantity'
+      - field: 'Value'
+        name: 'Note'
+        join: ['Footprint']
+      # can't use same field twice, so scripting for 'Customer Reference'
+  - name: bom_digikey_excluding_jlcpcb
+    comment: BOM for DigiKey excluding all JLCPCB components, for global sourcing or DigiKey order
+    type: bom
+    dir: manufacturing/bom
+    output_id: '-digikey_excluding_jlcpcb'
+    options:
+      format: CSV
+      exclude_filter: ['none_of_jlc_parts', 'only_digikey_parts', '_mechanical']
+      group_fields: ['value', 'footprint', 'Digikey Part #']
+      merge_blank_fields: false
+      csv:
+        hide_pcb_info: true
+        hide_stats_info: true
+      columns:
+      - field: 'Reference'
+        name: 'Reference Designator'
+      - field: 'Digikey Part #'
+        name: 'DigiKey Part Number'
+      - field: '${QUANTITY}'
+        name: 'Quantity'
+      - field: 'Value'
+        name: 'Note'
+        join: ['Footprint']
+      # can't use same field twice, so scripting for 'Customer Reference'
+  - name: bom_excluding_jlcpcb_digikey
+    comment: BOM excluding all JLCPCB and DigiKey components, for local sourcing
+    type: bom
+    dir: manufacturing/bom
+    output_id: '-excluding_jlcpcb_digikey'
+    options:
+      format: CSV
+      exclude_filter: ['none_of_jlc_parts', 'none_of_digikey_parts', '_mechanical']
+      group_fields: ['value', 'footprint', 'Local Sourcing URL 1', 'Local Sourcing URL 2']
+      merge_blank_fields: false
+      csv:
+        hide_pcb_info: true
+        hide_stats_info: true
+      columns:
+      - References
+      - Value
+      - Footprint
+      - field: '${QUANTITY}'
+        name: 'Quantity'
+      - Description
+      - Local Sourcing URL 1
+      - Local Sourcing URL 2
+  - name: bom_production
+    comment: BOM for production team
+    type: bom
+    dir: manufacturing/bom
+    options:
+      format: XLSX
+      group_fields: ['value', 'footprint', 'LCSC', 'Digikey Part #', 'Local Sourcing URL 1', 'Local Sourcing URL 2']
+      merge_blank_fields: false
+      xlsx:
+        title: ''
+        logo: false
+        digikey_link: 'Digikey Part #'
+        lcsc_link: 'LCSC'
+        datasheet_as_link: 'Datasheet'
+        col_colors: false
+      columns:
+      - References
+      - Value
+      - Footprint
+      - field: '${QUANTITY}'
+        name: 'Quantity'
+      - Manufacturer
+      - Manufacturer Product Number
+      - 'Digikey Part #'
+      - field: LCSC
+        name: 'LCSC Part #'
+      - Local Sourcing URL 1
+      - Local Sourcing URL 2
+      - Description
+      - Datasheet
+  - name: basic_ibom
+    comment: Interactive HTML BoM
+    type: ibom
+    dir: manufacturing/bom
+  - name: basic_download_datasheets
+    comment: Download the datasheets
+    type: download_datasheets
+    dir: assets/datasheets
+  - name: kiri
+    comment: 'Git diff for schematic and PCB'
+    type: kiri
+    dir: kiri
+

@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "Display_GoldenMorning")(type "KiCad")(uri "${KIPRJMOD}/../lib/sym/Display_GoldenMorning.kicad_sym")(options "")(descr ""))
+)

@@ -1,0 +1,64 @@
+kibot:
+  version: 1
+
+import:
+  - file: PCB2Blender_2_7
+
+outputs:
+  - name: blender_perspective_export
+    comment: 3D perspective views
+    type: blender_export
+    dir: exports/3d_views
+    options:
+      pcb3d: _PCB2Blender_2_7
+      outputs:
+        - type: render
+        - type: blender
+      render_options:
+        samples: 10
+        resolution_x: 1920
+        resolution_y: 1080
+      light: 
+        - name: 'kibot_light'
+          pos_x: '-size*3.33'
+          pos_y: 'size*3.33'
+          pos_z: 'size*5'
+          energy: 0.4
+      point_of_view:
+        - rotate_x: 30
+          rotate_z: -20
+          file_id: _perspective_top-angle
+        - rotate_x: 30
+          rotate_y: 180
+          rotate_z: 20
+          file_id: _perspective_bottom-angle
+      camera:
+        type: 'perspective'
+  - name: blender_orthographic_export
+    comment: 3D orthographic views
+    type: blender_export
+    dir: exports/3d_views
+    options:
+      pcb3d: _PCB2Blender_2_7
+      outputs:
+        - type: render
+        - type: blender
+      render_options:
+        samples: 10
+        resolution_x: 1920
+        resolution_y: 1080
+      light: 
+        - name: 'kibot_light'
+          pos_x: '-size*3.33'
+          pos_y: 'size*3.33'
+          pos_z: 'size*5'
+          energy: 0.4
+      point_of_view:
+        - view: top
+          file_id: _orthographic_top
+        - view: bottom
+          file_id: _orthographic_bottom
+      camera:
+        type: 'orthographic'
+      pcb_import:
+        solder_joints: NONE

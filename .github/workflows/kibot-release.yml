@@ -1,0 +1,262 @@
+name: KiBot (release)
+
+# Triggered only by version tags shaped like "<path>/v<semver>", e.g.
+#   handheld_pm/handheld_logicboard/v0.1.0   (single project)
+#   handheld_pm/v0.1.0                       (every project under handheld_pm/)
+on:
+  push:
+    tags:
+      - '**/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) Parse the tag, find the set of KiCad projects it covers, and enumerate
+  #    automation2*.kibot.yml files for each (the heavy N20..N29 jobs that
+  #    only run for releases — Blender renders, etc).
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detect projects for release
+    runs-on: ubuntu-latest
+    outputs:
+      matrix:   ${{ steps.find.outputs.matrix }}
+      count:    ${{ steps.find.outputs.count }}
+      projects: ${{ steps.find.outputs.projects }}
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve projects and automations
+        id: find
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          echo "Tag: $TAG"
+
+          # Tag format: <path>/v<major>.<minor>.<patch>[suffix]
+          if [[ ! "$TAG" =~ ^(.+)/v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
+            echo "::notice::Tag '$TAG' does not match <path>/v<semver>; nothing to do."
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'projects=[]'           >> "$GITHUB_OUTPUT"
+            echo 'count=0'               >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          PREFIX="${BASH_REMATCH[1]}"
+          echo "  path prefix: $PREFIX"
+
+          if [ ! -e "$PREFIX" ]; then
+            echo "::error::Path '$PREFIX' from tag does not exist in the checkout."
+            exit 1
+          fi
+
+          declare -A PROJECTS
+          if compgen -G "$PREFIX/*.kicad_pro" > /dev/null; then
+            # <path> is itself a project.
+            PROJECTS["$PREFIX"]=1
+          else
+            # <path> is a container; every project under it qualifies.
+            while IFS= read -r pro_file; do
+              PROJECTS["$(dirname "$pro_file")"]=1
+            done < <(find "$PREFIX" -type f -name "*.kicad_pro")
+          fi
+
+          items=()
+          proj_list=()
+          for proj in "${!PROJECTS[@]}"; do
+            if [ ! -d "$proj/automation" ]; then
+              echo "::warning::$proj has no automation/ directory, skipping"
+              continue
+            fi
+            shopt -s nullglob
+            autos=( "$proj"/automation/automation2*.kibot.yml )
+            shopt -u nullglob
+            if [ ${#autos[@]} -eq 0 ]; then
+              echo "::warning::$proj has no automation2*.kibot.yml files, skipping"
+              continue
+            fi
+            proj_list+=("\"$proj\"")
+            for autom in "${autos[@]}"; do
+              autom_name=$(basename "$autom")
+              items+=("{\"project\":\"$proj\",\"automation\":\"$autom_name\"}")
+              echo "  -> $proj :: $autom_name"
+            done
+          done
+
+          if [ ${#items[@]} -eq 0 ]; then
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'projects=[]'           >> "$GITHUB_OUTPUT"
+            echo 'count=0'               >> "$GITHUB_OUTPUT"
+            echo "Nothing to do."
+          else
+            joined=$(IFS=,; echo "${items[*]}")
+            echo "matrix={\"include\":[$joined]}" >> "$GITHUB_OUTPUT"
+            proj_joined=$(IFS=,; echo "${proj_list[*]}")
+            echo "projects=[$proj_joined]" >> "$GITHUB_OUTPUT"
+            echo "count=${#items[@]}" >> "$GITHUB_OUTPUT"
+            echo "Scheduling ${#items[@]} job(s)."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # 2) Run automation2 KiBot files against the *tagged* commit, then mirror
+  #    the generated files onto the default branch and commit them there.
+  #    Tags don't move; outputs land on the default branch so they persist.
+  #
+  #    Two checkouts share this job: source/ holds the tag, target/ holds the
+  #    default branch. KiBot writes into source/; we cp the dirty paths into
+  #    target/ and push from there.
+  # ---------------------------------------------------------------------------
+  kibot:
+    name: ${{ matrix.project }} / ${{ matrix.automation }}
+    needs: detect
+    if: needs.detect.outputs.count != '0'
+    runs-on: ubuntu-latest
+    container: ghcr.io/inti-cmnb/kicad9_auto_full:latest
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
+    steps:
+      - name: Trust workspace directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Checkout tag (source)
+        uses: actions/checkout@v6
+        with:
+          path: source
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run KiBot
+        working-directory: source/${{ matrix.project }}
+        run: |
+          set -euo pipefail
+          echo "Running KiBot for ${{ matrix.project }} with ${{ matrix.automation }}"
+          kibot -c "./automation/${{ matrix.automation }}"
+
+      - name: Checkout default branch (target)
+        uses: actions/checkout@v6
+        with:
+          path: target
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Mirror outputs to default branch and push
+        env:
+          PROJECT:    ${{ matrix.project }}
+          AUTOMATION: ${{ matrix.automation }}
+          BRANCH:     ${{ github.event.repository.default_branch }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Identify KiBot-touched files (untracked + modified) inside the
+          # project in the source checkout, and mirror them into target.
+          (
+            cd source
+            git config --global --add safe.directory "$PWD"
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              path="${line:3}"
+              path="${path%\"}"; path="${path#\"}"
+              if [ -e "$path" ]; then
+                mkdir -p "../target/$(dirname "$path")"
+                cp -a "$path" "../target/$path"
+              fi
+            done < <(git status --porcelain -- "$PROJECT")
+          )
+
+          cd target
+          git config --global --add safe.directory "$PWD"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Only stage files inside this project so parallel siblings working
+          # on other projects don't get swept into our commit.
+          git add -A -- "$PROJECT"
+          if git diff --cached --quiet; then
+            echo "No outputs produced by $AUTOMATION for $PROJECT — nothing to commit."
+            exit 0
+          fi
+
+          SHORT_SHA=${SOURCE_SHA:0:7}
+          git commit \
+            -m "ci(kibot): release outputs for $PROJECT (${{ github.ref_name }})" \
+            -m "Source ref: ${{ github.ref }} ($SHORT_SHA)" \
+            -m "Automation file: $AUTOMATION" \
+            -m "[skip ci]"
+
+          # Push with rebase-on-failure to survive concurrent matrix pushes,
+          # and to coexist with the branch workflow that may also be pushing
+          # to the default branch in parallel.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if git push origin "HEAD:$BRANCH"; then
+              echo "Pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt); rebasing on origin/$BRANCH..."
+            git fetch origin "$BRANCH"
+            if ! git rebase "origin/$BRANCH"; then
+              echo "::error::Rebase conflict while integrating concurrent KiBot outputs"
+              git rebase --abort || true
+              exit 1
+            fi
+            sleep $(( (RANDOM % 8) + 2 ))
+          done
+          echo "::error::Failed to push after 8 attempts"
+          exit 1
+
+  # ---------------------------------------------------------------------------
+  # 3) Once every automation2 file has finished pushing, zip each project
+  #    folder from the default branch (which now holds KiCad source +
+  #    automation1 outputs from history + the automation2 outputs just
+  #    generated) and attach it to the GitHub release for the tag.
+  #
+  #    max-parallel: 1 keeps two matrix entries from racing to create the
+  #    release simultaneously.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Release ${{ matrix.project }}
+    needs: [detect, kibot]
+    if: needs.detect.outputs.count != '0'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        project: ${{ fromJSON(needs.detect.outputs.projects) }}
+    steps:
+      - name: Checkout default branch (with fresh outputs)
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 1
+
+      - name: Zip project folder
+        id: zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROJECT="${{ matrix.project }}"
+          PROJ_NAME=$(basename "$PROJECT")
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG##*/v}"
+          ZIP_NAME="${PROJ_NAME}-v${VERSION}.zip"
+          ZIP_PATH="$GITHUB_WORKSPACE/$ZIP_NAME"
+          (cd "$(dirname "$PROJECT")" && zip -r "$ZIP_PATH" "$(basename "$PROJECT")")
+          echo "path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.zip.outputs.path }}
+          fail_on_unmatched_files: true

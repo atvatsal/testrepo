@@ -1,0 +1,233 @@
+(footprint "MLT-8530"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at 0 -6 0)
+		(layer "F.SilkS")
+		(uuid "a25bd295-3c86-4bbb-b750-24f7c801f10d")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "MLT-8530"
+		(at 0 2.2 0)
+		(layer "F.Fab")
+		(uuid "64025c13-4454-4fc0-b268-86c98299ca50")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "c84baa51-858e-4767-845b-aff302976b5c")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "8d13b2b8-261e-4ea4-bff2-82f86ed52bb8")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_line
+		(start -4.75 -1.5)
+		(end -4.75 1.5)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "f1d0bb25-405c-42cf-a23b-4793eb7c20c9")
+	)
+	(fp_line
+		(start -1.5 -4.75)
+		(end 1.5 -4.75)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "5a12b997-4c6d-4615-bcf2-2ce5ca4fee79")
+	)
+	(fp_line
+		(start -1.5 4.75)
+		(end 1.5 4.75)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "2fc1019c-4118-4f9d-a67f-9ca2c2d2195b")
+	)
+	(fp_line
+		(start 3.8 -4.7)
+		(end 4.7 -3.8)
+		(stroke
+			(width 0.12)
+			(type default)
+		)
+		(layer "F.SilkS")
+		(uuid "d46c50ea-6151-4d84-80b5-e79f1c40c694")
+	)
+	(fp_line
+		(start 4.75 -1.5)
+		(end 4.75 1.5)
+		(stroke
+			(width 0.12)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "5e9a46dc-9e75-44b3-83e5-21ceee71ca97")
+	)
+	(fp_rect
+		(start -5 -5)
+		(end 5 5)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "9d0c35a2-28ad-407d-8418-a49ed972ac08")
+	)
+	(fp_line
+		(start -4.25 -4.25)
+		(end 4.25 -4.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "3834345b-85d6-4ebb-8f30-cc86857aa4c8")
+	)
+	(fp_line
+		(start -4.25 4.25)
+		(end -4.25 -4.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "f1f65ac4-dec6-41d4-83e6-b8b03ab61c32")
+	)
+	(fp_line
+		(start 2 -1)
+		(end 2 1)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "3bbdfff4-63da-4be0-a853-0c77ac7199c2")
+	)
+	(fp_line
+		(start 2 1)
+		(end 3.1 0)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "8e9f1404-b65a-4c22-850f-2e75eeb60503")
+	)
+	(fp_line
+		(start 3.1 0)
+		(end 2 -1)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "F.Fab")
+		(uuid "69a41143-99c6-4318-b546-02c7001d326c")
+	)
+	(fp_line
+		(start 4.25 -4.25)
+		(end 4.25 4.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "7d6fa7dc-a048-4614-a0be-2d29fdb9bca6")
+	)
+	(fp_line
+		(start 4.25 4.25)
+		(end -4.25 4.25)
+		(stroke
+			(width 0.127)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "d20ed4f9-65c6-40a4-9bfb-8acd36f6e9ce")
+	)
+	(pad "" smd custom
+		(at 3.1 -3.1)
+		(size 1.4 1.4)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(options
+			(clearance outline)
+			(anchor rect)
+		)
+		(primitives
+			(gr_poly
+				(pts
+					(xy -0.7 -1.6) (xy 0.4 -1.6) (xy 1.6 -0.4) (xy 1.6 0.7) (xy -0.7 0.7)
+				)
+				(width 0)
+				(fill yes)
+			)
+		)
+		(uuid "28861bdb-0b84-44d7-b92a-6f70bf74d659")
+	)
+	(pad "" smd rect
+		(at 3.55 3.55)
+		(size 2.3 2.3)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "97e4cd08-87cc-48f3-b350-60bf2cf61f77")
+	)
+	(pad "1" smd rect
+		(at -3.55 -3.55)
+		(size 2.3 2.3)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "406cdcc0-3ad1-4040-a8d5-71132fe5b4e8")
+	)
+	(pad "2" smd rect
+		(at -3.55 3.55)
+		(size 2.3 2.3)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(uuid "d78b5ea1-21f4-4a2a-8bd1-92bd8c222d3b")
+	)
+	(embedded_fonts no)
+	(model "/home/vatsal/myfiles/repos/Electronics-Design-Files/handheld_pm/lib/3d/SMT-0827-S-HT-R.step"
+		(offset
+			(xyz 0 0 1.3)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz -90 -0 -180)
+		)
+	)
+)
